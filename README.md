@@ -3,5 +3,5 @@
 - [Windows](https://github.com/TurtleManPurple/EncryptionTool/blob/main/Installation-WINDOWS.md)
 - [MacOS](https://github.com/TurtleManPurple/EncryptionTool/blob/main/Installation-MACOS.md)
 - [Linux](https://github.com/TurtleManPurple/EncryptionTool/blob/main/Installation-LINUX.md)
-- ChromeOS - **COMING SOON**
+- [ChromeOS](https://github.com/TurtleManPurple/EncryptionTool/blob/main/Installation-CHROMEOS.md)
 - iOS - **COMING SOON**
