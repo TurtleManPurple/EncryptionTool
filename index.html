@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Secure Text Encryptor</title>
+<link rel="icon" href="assets/favicon/favicon.ico">
+
+<style>
+    body {
+        margin: 0;
+        font-family: Segoe UI, sans-serif;
+        background: #181818;
+        color: white;
+    }
+
+    .header {
+        background: #202020;
+        margin: 12px;
+        padding: 15px 20px;
+        border-radius: 12px;
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .password-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 12px;
+        background: #202020;
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    input {
+        flex: 1;
+        padding: 12px;
+        border-radius: 8px;
+        border: none;
+        outline: none;
+        background: #2a2a2a;
+        color: white;
+    }
+
+    button {
+        border: none;
+        border-radius: 8px;
+        padding: 10px 15px;
+        cursor: pointer;
+        color: white;
+        background: #1f6aa5; /* default theme color */
+        transition: 0.2s;
+        -webkit-appearance: none;
+        appearance: none;
+    }
+
+    button:hover {
+       filter: brightness(1.15);
+    }
+
+    button:focus {
+    outline: none;
+    }
+
+    .green { background: #2E8B57; }
+    .blue  { background: #1f6aa5; }
+    .gray { background : #444444; }
+
+    .main {
+        display: flex;
+        gap: 12px;
+        margin: 12px;
+        height: 65vh;
+    }
+
+    .panel {
+        flex: 1;
+        background: #202020;
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .panel h3 {
+        margin: 0 0 20px 0;
+    }
+
+    textarea {
+        flex: 1;
+        min-height: 0;
+        resize: none;
+        background: #2a2a2a;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px;
+        font-family: Consolas;
+    }
+
+    .btnrow {
+        display: flex;
+        margin-top: 10px;
+        gap: 10px;
+    }
+
+    .status {
+        margin: 12px;
+        color: #2E8B57;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="header">🔒 Secure Text Encryptor</div>
+
+<div class="password-bar">
+    <input id="password" type="password" placeholder="Enter encryption password...">
+    <button class="blue" onclick="togglePassword(event)">Show</button>
+</div>
+
+<div class="main">
+
+    <!-- LEFT -->
+    <div class="panel">
+        <h3>ENCRYPT / DECRYPT</h3>
+        <textarea id="input"></textarea>
+
+        <div class="btnrow">
+            <button class="green" onclick="encrypt()">Encrypt</button>
+            <button class="blue" onclick="decrypt()">Decrypt</button>
+        </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="panel">
+        <h3>OUTPUT</h3>
+        <textarea id="output" readonly></textarea>
+
+        <div class="btnrow">
+            <button class="green" onclick="copyOutput()">Copy</button>
+            <button class="gray" onclick="clearAll()">Clear</button>
+        </div>
+    </div>
+
+</div>
+
+<div class="status" id="status">● Ready | AES-256-GCM</div>
+
+<script>
+let visible = false;
+
+function togglePassword(event) {
+    const pw = document.getElementById("password");
+    const btn = event.target;
+
+    visible = !visible;
+    pw.type = visible ? "text" : "password";
+    btn.innerText = visible ? "Hide" : "Show";
+}
+
+function setStatus(text, color="#2E8B57") {
+    const s = document.getElementById("status");
+    s.innerText = "● " + text;
+    s.style.color = color;
+}
+
+// Helper to derive an encryption key from the user's string password
+async function deriveKey(password, salt) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey(
+        "raw", 
+        enc.encode(password), 
+        { name: "PBKDF2" }, 
+        false, 
+        ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+        {
+            name: "PBKDF2",
+            salt: salt,
+            iterations: 100000,
+            hash: "SHA-256"
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    );
+}
+
+async function encrypt() {
+    try {
+        const text = document.getElementById("input").value;
+        const password = document.getElementById("password").value;
+
+        if (!text || !password) {
+            setStatus("Error: Input and Password are required", "red");
+            return;
+        }
+
+        const enc = new TextEncoder();
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        
+        const key = await deriveKey(password, salt);
+        const encryptedBytes = await crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            enc.encode(text)
+        );
+
+        // Pack salt, iv, and data into a single array to convert to Base64
+        const combined = new Uint8Array(salt.length + iv.length + encryptedBytes.byteLength);
+        combined.set(salt, 0);
+        combined.set(iv, salt.length);
+        combined.set(new Uint8Array(encryptedBytes), salt.length + iv.length);
+
+        // Convert byte data to Base64 string for safe HTML display
+        const binString = String.fromCodePoint(...combined);
+        document.getElementById("output").value = btoa(binString);
+        setStatus("Encryption successful");
+    } catch (e) {
+        setStatus("Encryption failed", "red");
+    }
+}
+
+async function decrypt() {
+    try {
+        const base64Text = document.getElementById("input").value;
+        const password = document.getElementById("password").value;
+
+        if (!base64Text || !password) {
+            setStatus("Error: Ciphertext and Password are required", "red");
+            return;
+        }
+
+        // Unpack Base64 string back into binary arrays
+        const binString = atob(base64Text);
+        const combined = Uint8Array.from(binString, m => m.codePointAt(0));
+        
+        const salt = combined.slice(0, 16);
+        const iv = combined.slice(16, 28);
+        const encryptedData = combined.slice(28);
+
+        const key = await deriveKey(password, salt);
+        const decryptedBytes = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            encryptedData
+        );
+
+        const dec = new TextDecoder();
+        document.getElementById("output").value = dec.decode(decryptedBytes);
+        setStatus("Decryption successful");
+    } catch (e) {
+        setStatus("Decryption failed. Bad password or corrupted text.", "red");
+    }
+}
+
+function copyOutput() {
+    const out = document.getElementById("output");
+    out.select();
+    document.execCommand("copy");
+    setStatus("Output copied");
+}
+
+function clearAll() {
+    document.getElementById("input").value = "";
+    document.getElementById("output").value = "";
+    setStatus("Cleared");
+}
+</script>
+
+</body>
+</html>
